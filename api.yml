@@ -1,0 +1,87 @@
+# This is the OpenAPI specification for your service. It is used to generate the client code.
+# To generate the server code, use the Gradle task `openApiGenerate`. The 
+# generated code will be placed in `build/generate-resources/main`.
+#
+# We will evaluate you based on how well you design your API.
+# 1. How well it follows REST principles.
+# 2. How easy it is to understand and use.
+#
+# References
+# 1. https://swagger.io/specification/
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: User Service
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:8080
+paths:
+  /hello:
+    get:
+      summary: This is just a test endpoint to get you started. Please delete this endpoint.
+      operationId: hello
+      parameters:
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Test return
+          content:
+            application/json:    
+              schema:
+                $ref: "#/components/schemas/HelloResponse"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /registration:
+    post:
+      summary: User Registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phoneNumber:
+                  type: string
+                  minLength: 10
+                  maxLength: 13
+                  pattern: '^\+62\d{9,12}$'
+                fullName:
+                  type: string
+                  minLength: 3
+                  maxLength: 60
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 64
+                  pattern: '^(?=.*[A-Z])(?=.*\d)(?=.*\W).+$'
+      responses:
+        '200':
+          description: Successful registration
+        '400':
+          description: Bad Request - Invalid input
+components:
+  schemas:
+    HelloResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
