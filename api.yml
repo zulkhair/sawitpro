@@ -70,9 +70,11 @@ paths:
                   pattern: '^(?=.*[A-Z])(?=.*\d)(?=.*\W).+$'
       responses:
         '200':
-          description: Successful registration
+          description: Successful
         '400':
           description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
   /login:
     post:
       summary: Login
@@ -98,22 +100,27 @@ paths:
                   pattern: '^(?=.*[A-Z])(?=.*\d)(?=.*\W).+$'
       responses:
         '200':
-          description: Successful login
+          description: Successful
         '400':
           description: Bad Request - Invalid input
+        '500':
+          description: Internal Server Error
   /profile:
     get:
       summary: Get User Profile
       security:
-        - JWTAuth: []
+        - JWTAuth: [] #still need to research how to use this
       responses:
         '200':
-          description: OK
+          description: Successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserProfile'
-      x-handler: generated_handlers.GetProfile
+        '400':
+          description: Bad Request - Invalid input
+        '403':
+          description: Forbidden code
     put:
       summary: Update User Profile
       security:
@@ -126,8 +133,15 @@ paths:
               $ref: '#/components/schemas/UpdateUserProfile'
       responses:
         '200':
-          description: OK
-      x-handler: generated_handlers.UpdateProfile
+          description: Successful
+        '400':
+          description: Bad Request - Invalid input
+        '403':
+          description: Forbidden code
+        '409':
+          description: Phone number already exist
+        '500':
+          description: Internal Server Error
 components:
   securitySchemes:
     JWTAuth:
@@ -152,8 +166,6 @@ components:
     UserProfile:
       type: object
       properties:
-        userId:
-          type: integer
         name:
           type: string
         phone:
