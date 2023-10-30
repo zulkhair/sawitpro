@@ -29,34 +29,34 @@ func (s *Server) PostRegistration(ctx echo.Context) error {
 	req := new(generated.PostRegistrationJSONRequestBody)
 
 	if err := ctx.Bind(req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request payload"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid request payload"})
 	}
 
 	// Perform validation
 	if !isValidPhoneNumber(req.Phone) {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid phone number. Phone numbers must start with +62 and be 10 to 13 characters in total"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid phone number. Phone numbers must start with +62 and be 10 to 13 characters in total"})
 	}
 
 	if len(req.Name) < 3 || len(req.Name) > 60 {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid full name. Full names must be 3 to 60 characters"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid full name. Full names must be 3 to 60 characters"})
 	}
 
 	if !isValidPassword(req.Password) {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid password. Passwords must be 6 to 64 characters and contain at least 1 uppercase letter, 1 digit, and 1 special character"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid password. Passwords must be 6 to 64 characters and contain at least 1 uppercase letter, 1 digit, and 1 special character"})
 	}
 
 	// Generate a random salt
 	salt, err := generateRandomSalt()
 	if err != nil { // Todo : make this function as interface, this error cannot covered by unit test by now
 		log.Error(err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"message": "Internal Server Error"})
 	}
 
 	// Combine the password and salt, then hash the result
 	hashedPassword, err := hashPassword(req.Password, salt)
 	if err != nil { // Todo : make this function as interface, this error cannot covered by unit test by now
 		log.Error(err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"message": "Internal Server Error"})
 	}
 
 	output, err := s.Repository.Registration(ctx.Request().Context(), repository.RegistrationInput{
@@ -72,11 +72,11 @@ func (s *Server) PostRegistration(ctx echo.Context) error {
 		if errors.As(err, &pqErr) {
 			// Check if the error code is 23505 (unique violation)
 			if pqErr.Code == "23505" {
-				return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Phone number already exist"})
+				return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Phone number already exist"})
 			}
 		}
 		log.Error(err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Error when registering user"})
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"message": "Error when registering user"})
 	}
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Registration successful", "id": output.ID})
 }
@@ -86,16 +86,16 @@ func (s *Server) PostLogin(ctx echo.Context) error {
 	req := new(generated.PostLoginJSONRequestBody)
 
 	if err := ctx.Bind(req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request payload"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid request payload"})
 	}
 
 	// Perform validation
 	if !isValidPhoneNumber(req.Phone) {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid phone number. Phone numbers must start with +62 and be 10 to 13 characters in total"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid phone number. Phone numbers must start with +62 and be 10 to 13 characters in total"})
 	}
 
 	if !isValidPassword(req.Password) {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid password. Passwords must be 6 to 64 characters and contain at least 1 uppercase letter, 1 digit, and 1 special character"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid password. Passwords must be 6 to 64 characters and contain at least 1 uppercase letter, 1 digit, and 1 special character"})
 	}
 
 	// Find user by phone to database
@@ -107,14 +107,14 @@ func (s *Server) PostLogin(ctx echo.Context) error {
 	})
 	if err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "User not found"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "User not found"})
 	}
 
 	// Compare password
 	passwordWithSalt := req.Password + user.Salt
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(passwordWithSalt)); err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid password"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid password"})
 	}
 
 	// create jwt token
@@ -122,14 +122,14 @@ func (s *Server) PostLogin(ctx echo.Context) error {
 	token, err := createToken(user.ID, exp)
 	if err != nil { // Todo : make this function as interface, this error cannot covered by unit test by now
 		log.Error(err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"message": "Internal Server Error"})
 	}
 
 	// Login attempt increment
 	err = s.Repository.IncreaseLoginAttempt(ctx.Request().Context(), req.Phone)
 	if err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"message": "Internal Server Error"})
 	}
 
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Login successful", "token": token, "phone": user.Phone})
@@ -142,7 +142,7 @@ func (s *Server) GetProfile(ctx echo.Context) error {
 	ID, err := validateToken(ctx)
 	if err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden code"})
+		return ctx.JSON(http.StatusForbidden, map[string]string{"message": "Forbidden code"})
 	}
 
 	// Find user by ID
@@ -154,7 +154,7 @@ func (s *Server) GetProfile(ctx echo.Context) error {
 	})
 	if err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "User not found"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "User not found"})
 	}
 
 	return ctx.JSON(http.StatusOK, map[string]string{"phone": user.Phone, "name": user.Name})
@@ -166,13 +166,13 @@ func (s *Server) PutProfile(ctx echo.Context) error {
 	ID, err := validateToken(ctx)
 	if err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden code"})
+		return ctx.JSON(http.StatusForbidden, map[string]string{"message": "Forbidden code"})
 	}
 
 	req := new(generated.PutProfileJSONRequestBody)
 
 	if err := ctx.Bind(req); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request payload"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid request payload"})
 	}
 
 	// Find user by ID
@@ -184,7 +184,7 @@ func (s *Server) PutProfile(ctx echo.Context) error {
 	})
 	if err != nil {
 		log.Error(err)
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "User not found"})
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "User not found"})
 	}
 
 	userUpdate := repository.UpdateUser{}
@@ -192,7 +192,7 @@ func (s *Server) PutProfile(ctx echo.Context) error {
 	if req.Phone != nil {
 		// Perform validation
 		if !isValidPhoneNumber(*req.Phone) { // Todo : create function for standard response, because some response are similar
-			return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid phone number. Phone numbers must start with +62 and be 10 to 13 characters in total"})
+			return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid phone number. Phone numbers must start with +62 and be 10 to 13 characters in total"})
 		}
 
 		// set to new value
@@ -205,7 +205,7 @@ func (s *Server) PutProfile(ctx echo.Context) error {
 	if req.Name != nil {
 		// Perform validation
 		if len(*req.Name) < 3 || len(*req.Name) > 60 {
-			return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid full name. Full names must be 3 to 60 characters"})
+			return ctx.JSON(http.StatusBadRequest, map[string]string{"message": "Invalid full name. Full names must be 3 to 60 characters"})
 		}
 
 		// set to new value
@@ -222,11 +222,11 @@ func (s *Server) PutProfile(ctx echo.Context) error {
 		if errors.As(err, &pqErr) {
 			// Check if the error code is 23505 (unique violation)
 			if pqErr.Code == "23505" {
-				return ctx.JSON(http.StatusConflict, map[string]string{"error": "Phone number already exist"})
+				return ctx.JSON(http.StatusConflict, map[string]string{"message": "Phone number already exist"})
 			}
 		}
 		log.Error(err)
-		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Error when registering user"})
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"message": "Error when registering user"})
 	}
 
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "User updated"})
