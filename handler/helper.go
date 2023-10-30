@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var secret = []byte("33cfdeb6-a200-483d-84c8-ac0242682a40") // Todo : get this from config file or env variable or database
+var secret = []byte("33cfdeb6-a200-483d-84c8-ac0242682a40") // Todo : move this to config file or env variable or database
 func isValidPhoneNumber(phoneNumber string) bool {
 	// Phone numbers must start with "+62" and be 10 to 13 characters in total
 	re := regexp.MustCompile(`^\+62\d{9,11}$`)
@@ -72,11 +72,11 @@ func hashPassword(password, salt string) (string, error) {
 	return string(hash), nil
 }
 
-func createToken(id string) (string, error) {
+func createToken(id string, exp time.Time) (string, error) {
 	// Create a new token object, specifying the signing method and the claims
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":  id,
-		"exp": time.Now().Add(time.Hour * 1).Unix(), // Token expires in 1 hour
+		"exp": exp.Unix(), // Token expires in 1 hour
 	})
 
 	// Sign and get the complete encoded token as a string

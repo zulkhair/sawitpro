@@ -34,19 +34,24 @@ func (m *MockRepositoryInterface) EXPECT() *MockRepositoryInterfaceMockRecorder 
 	return m.recorder
 }
 
-// FindUserByPhone mocks base method.
-func (m *MockRepositoryInterface) FindUserByPhone(ctx context.Context, phone string) (User, error) {
+// FindUser mocks base method.
+func (m *MockRepositoryInterface) FindUser(ctx context.Context, params ...Param) (User, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FindUserByPhone", ctx, phone)
+	varargs := []interface{}{ctx}
+	for _, a := range params {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "FindUser", varargs...)
 	ret0, _ := ret[0].(User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// FindUserByPhone indicates an expected call of FindUserByPhone.
-func (mr *MockRepositoryInterfaceMockRecorder) FindUserByPhone(ctx, phone interface{}) *gomock.Call {
+// FindUser indicates an expected call of FindUser.
+func (mr *MockRepositoryInterfaceMockRecorder) FindUser(ctx interface{}, params ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserByPhone", reflect.TypeOf((*MockRepositoryInterface)(nil).FindUserByPhone), ctx, phone)
+	varargs := append([]interface{}{ctx}, params...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUser", reflect.TypeOf((*MockRepositoryInterface)(nil).FindUser), varargs...)
 }
 
 // GetTestById mocks base method.
