@@ -75,7 +75,7 @@ paths:
           description: Bad Request - Invalid input
   /login:
     post:
-      summary: Endpoint for login
+      summary: Login
       requestBody:
         required: true
         content:
