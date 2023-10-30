@@ -34,6 +34,21 @@ func (m *MockRepositoryInterface) EXPECT() *MockRepositoryInterfaceMockRecorder 
 	return m.recorder
 }
 
+// FindUserByPhone mocks base method.
+func (m *MockRepositoryInterface) FindUserByPhone(ctx context.Context, phone string) (User, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindUserByPhone", ctx, phone)
+	ret0, _ := ret[0].(User)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindUserByPhone indicates an expected call of FindUserByPhone.
+func (mr *MockRepositoryInterfaceMockRecorder) FindUserByPhone(ctx, phone interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindUserByPhone", reflect.TypeOf((*MockRepositoryInterface)(nil).FindUserByPhone), ctx, phone)
+}
+
 // GetTestById mocks base method.
 func (m *MockRepositoryInterface) GetTestById(ctx context.Context, input GetTestByIdInput) (GetTestByIdOutput, error) {
 	m.ctrl.T.Helper()
@@ -47,4 +62,47 @@ func (m *MockRepositoryInterface) GetTestById(ctx context.Context, input GetTest
 func (mr *MockRepositoryInterfaceMockRecorder) GetTestById(ctx, input interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTestById", reflect.TypeOf((*MockRepositoryInterface)(nil).GetTestById), ctx, input)
+}
+
+// IncreaseLoginAttempt mocks base method.
+func (m *MockRepositoryInterface) IncreaseLoginAttempt(ctx context.Context, phone string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IncreaseLoginAttempt", ctx, phone)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// IncreaseLoginAttempt indicates an expected call of IncreaseLoginAttempt.
+func (mr *MockRepositoryInterfaceMockRecorder) IncreaseLoginAttempt(ctx, phone interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IncreaseLoginAttempt", reflect.TypeOf((*MockRepositoryInterface)(nil).IncreaseLoginAttempt), ctx, phone)
+}
+
+// Registration mocks base method.
+func (m *MockRepositoryInterface) Registration(ctx context.Context, input RegistrationInput) (RegistrationOutput, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Registration", ctx, input)
+	ret0, _ := ret[0].(RegistrationOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Registration indicates an expected call of Registration.
+func (mr *MockRepositoryInterfaceMockRecorder) Registration(ctx, input interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Registration", reflect.TypeOf((*MockRepositoryInterface)(nil).Registration), ctx, input)
+}
+
+// UpdateUser mocks base method.
+func (m *MockRepositoryInterface) UpdateUser(ctx context.Context, user UpdateUser) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateUser", ctx, user)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateUser indicates an expected call of UpdateUser.
+func (mr *MockRepositoryInterfaceMockRecorder) UpdateUser(ctx, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateUser", reflect.TypeOf((*MockRepositoryInterface)(nil).UpdateUser), ctx, user)
 }

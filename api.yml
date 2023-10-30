@@ -31,7 +31,7 @@ paths:
         '200':
           description: Test return
           content:
-            application/json:    
+            application/json:
               schema:
                 $ref: "#/components/schemas/HelloResponse"
         '404':
@@ -49,13 +49,17 @@ paths:
           application/json:
             schema:
               type: object
+              required:
+                - phone
+                - name
+                - password
               properties:
-                phoneNumber:
+                phone:
                   type: string
                   minLength: 10
                   maxLength: 13
                   pattern: '^\+62\d{9,12}$'
-                fullName:
+                name:
                   type: string
                   minLength: 3
                   maxLength: 60
@@ -69,7 +73,67 @@ paths:
           description: Successful registration
         '400':
           description: Bad Request - Invalid input
+  /login:
+    post:
+      summary: Endpoint for login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - password
+              properties:
+                phone:
+                  type: string
+                  minLength: 10
+                  maxLength: 13
+                  pattern: '^\+62\d{9,12}$'
+                password:
+                  type: string
+                  minLength: 6
+                  maxLength: 64
+                  pattern: '^(?=.*[A-Z])(?=.*\d)(?=.*\W).+$'
+      responses:
+        '200':
+          description: Successful login
+        '400':
+          description: Bad Request - Invalid input
+  /profile:
+    get:
+      summary: Get User Profile
+      security:
+        - JWTAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+      x-handler: generated_handlers.GetProfile
+    put:
+      summary: Update User Profile
+      security:
+        - JWTAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserProfile'
+      responses:
+        '200':
+          description: OK
+      x-handler: generated_handlers.UpdateProfile
 components:
+  securitySchemes:
+    JWTAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     HelloResponse:
       type: object
@@ -84,4 +148,20 @@ components:
         - message
       properties:
         message:
+          type: string
+    UserProfile:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+        phone:
+          type: string
+    UpdateUserProfile:
+      type: object
+      properties:
+        name:
+          type: string
+        phone:
           type: string

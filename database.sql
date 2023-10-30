@@ -22,5 +22,7 @@ CREATE TABLE IF NOT EXISTS public.user (
     name VARCHAR ( 60 ) NOT NULL,
     password VARCHAR ( 64 ) NOT NULL,
     salt VARCHAR ( 64 ) NOT NULL,
-    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    success_login INTEGER NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE
 );

@@ -1,19 +1,19 @@
 package handler
 
 import (
-	"crypto/rand"
-	"encoding/base64"
+	"errors"
 	"fmt"
-	"golang.org/x/crypto/bcrypt"
-	"net/http"
-	"regexp"
-
 	"github.com/SawitProRecruitment/UserService/generated"
 	"github.com/SawitProRecruitment/UserService/repository"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
+	"github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
+	"net/http"
 )
+
+// Todo : create standard response helper
 
 // This is just a test endpoint to get you started. Please delete this endpoint.
 // (GET /hello)
@@ -32,15 +32,15 @@ func (s *Server) PostRegistration(ctx echo.Context) error {
 	}
 
 	// Perform validation
-	if !isValidPhoneNumber(*req.PhoneNumber) {
+	if !isValidPhoneNumber(req.Phone) {
 		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid phone number. Phone numbers must start with \"+62\" and be 10 to 13 characters in total"})
 	}
 
-	if len(*req.FullName) < 3 || len(*req.FullName) > 60 {
+	if len(req.Name) < 3 || len(req.Name) > 60 {
 		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid full name. Full names must be 3 to 60 characters"})
 	}
 
-	if !isValidPassword(*req.Password) {
+	if !isValidPassword(req.Password) {
 		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid password. Passwords must be 6 to 64 characters and contain at least 1 uppercase letter, 1 digit, and 1 special character"})
 	}
 
@@ -52,82 +52,179 @@ func (s *Server) PostRegistration(ctx echo.Context) error {
 	}
 
 	// Combine the password and salt, then hash the result
-	hashedPassword, err := hashPassword(*req.Password, salt)
+	hashedPassword, err := hashPassword(req.Password, salt)
 	if err != nil {
 		log.Error(err)
 		ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
 	}
 
 	output, err := s.Repository.Registration(ctx.Request().Context(), repository.RegistrationInput{
-		ID:          uuid.NewString(),
-		PhoneNumber: *req.PhoneNumber,
-		FullName:    *req.FullName,
-		Password:    hashedPassword,
-		Salt:        salt,
+		ID:       uuid.NewString(),
+		Phone:    req.Phone,
+		Name:     req.Name,
+		Password: hashedPassword,
+		Salt:     salt,
 	})
 
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
+			// Check if the error code is 23505 (unique violation)
+			if pqErr.Code == "23505" {
+				return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Phone number already exist"})
+			}
+		}
 		log.Error(err)
 		return ctx.JSON(http.StatusInternalServerError, "Error when registering user")
 	}
 	return ctx.JSON(http.StatusOK, map[string]string{"message": "Registration successful", "id": output.ID})
 }
 
-func isValidPhoneNumber(phoneNumber string) bool {
-	// Phone numbers must start with "+62" and be 10 to 13 characters in total
-	re := regexp.MustCompile(`^\+62\d{9,11}$`)
-	return re.MatchString(phoneNumber)
-}
+// PostLogin : This endpoint is for login
+func (s *Server) PostLogin(ctx echo.Context) error {
+	req := new(generated.PostLoginJSONRequestBody)
 
-func isValidPassword(password string) bool {
-	// Check length
-	if len(password) < 6 || len(password) > 64 {
-		return false
+	if err := ctx.Bind(req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request payload"})
 	}
 
-	// Define regex patterns
-	uppercasePattern := `[A-Z]`
-	numberPattern := `[0-9]`
-	specialCharPattern := `[^a-zA-Z0-9]`
-
-	// Compile the regular expressions
-	uppercaseRegex := regexp.MustCompile(uppercasePattern)
-	numberRegex := regexp.MustCompile(numberPattern)
-	specialCharRegex := regexp.MustCompile(specialCharPattern)
-
-	// Check for at least one uppercase letter
-	if !uppercaseRegex.MatchString(password) {
-		return false
+	// Perform validation
+	if !isValidPhoneNumber(req.Phone) {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid phone number. Phone numbers must start with \"+62\" and be 10 to 13 characters in total"})
 	}
 
-	// Check for at least one number
-	if !numberRegex.MatchString(password) {
-		return false
+	if !isValidPassword(req.Password) {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid password. Passwords must be 6 to 64 characters and contain at least 1 uppercase letter, 1 digit, and 1 special character"})
 	}
 
-	// Check for at least one special character
-	if !specialCharRegex.MatchString(password) {
-		return false
-	}
+	// Find user by phone to database
+	user, err := s.Repository.FindUser(ctx.Request().Context(), repository.Param{
+		Logic:    "AND",
+		Field:    "phone",
+		Operator: "=",
+		Value:    req.Phone,
+	})
 
-	// All conditions passed
-	return true
-}
-
-func generateRandomSalt() (string, error) {
-	randomBytes := make([]byte, 16)
-	_, err := rand.Read(randomBytes)
 	if err != nil {
-		return "", err
+		log.Error(err)
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "User not found"})
 	}
-	return base64.StdEncoding.EncodeToString(randomBytes), nil
+
+	// Compare password
+	passwordWithSalt := req.Password + user.Salt
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(passwordWithSalt)); err != nil {
+		log.Error(err)
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid password"})
+	}
+
+	token, err := createToken(user.ID)
+	if err != nil {
+		log.Error(err)
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+	}
+
+	// Login attempt increment
+	err = s.Repository.IncreaseLoginAttempt(ctx.Request().Context(), req.Phone)
+	if err != nil {
+		log.Error(err)
+		return ctx.JSON(http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "Login successful", "token": token, "phone": user.Phone})
 }
 
-func hashPassword(password, salt string) (string, error) {
-	passwordWithSalt := []byte(password + salt)
-	hash, err := bcrypt.GenerateFromPassword(passwordWithSalt, bcrypt.DefaultCost)
+func (s *Server) GetProfile(ctx echo.Context) error {
+	// Todo : create middleware to check the token
+	// Validate token
+	ID, err := validateToken(ctx)
 	if err != nil {
-		return "", err
+		log.Error(err)
+		return ctx.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden code"})
 	}
-	return string(hash), nil
+
+	// Find user by ID
+	user, err := s.Repository.FindUser(ctx.Request().Context(), repository.Param{
+		Logic:    "AND",
+		Field:    "id",
+		Operator: "=",
+		Value:    ID,
+	})
+	if err != nil {
+		log.Error(err)
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "User not found"})
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"phone": user.Phone, "name": user.Name})
+}
+
+func (s *Server) PutProfile(ctx echo.Context) error {
+	// Todo : create middleware to check the token
+	// Validate token
+	ID, err := validateToken(ctx)
+	if err != nil {
+		log.Error(err)
+		return ctx.JSON(http.StatusForbidden, map[string]string{"error": "Forbidden code"})
+	}
+
+	req := new(generated.PutProfileJSONRequestBody)
+
+	if err := ctx.Bind(req); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request payload"})
+	}
+
+	// Find user by ID
+	user, err := s.Repository.FindUser(ctx.Request().Context(), repository.Param{
+		Logic:    "AND",
+		Field:    "id",
+		Operator: "=",
+		Value:    ID,
+	})
+	if err != nil {
+		log.Error(err)
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "User not found"})
+	}
+
+	userUpdate := repository.UpdateUser{}
+	userUpdate.ID = user.ID
+	if req.Phone != nil {
+		// Perform validation
+		if !isValidPhoneNumber(*req.Phone) {
+			return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid phone number. Phone numbers must start with \"+62\" and be 10 to 13 characters in total"})
+		}
+
+		// set to new value
+		userUpdate.Phone = *req.Phone
+	} else {
+		// set to old value
+		userUpdate.Phone = user.Phone
+	}
+
+	if req.Name != nil {
+		// Perform validation
+		if len(*req.Name) < 3 || len(*req.Name) > 60 {
+			return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid full name. Full names must be 3 to 60 characters"})
+		}
+
+		// set to new value
+		userUpdate.Name = *req.Name
+	} else {
+		// set to old value
+		userUpdate.Name = user.Name
+	}
+
+	// Update user
+	err = s.Repository.UpdateUser(ctx.Request().Context(), userUpdate)
+	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) {
+			// Check if the error code is 23505 (unique violation)
+			if pqErr.Code == "23505" {
+				return ctx.JSON(http.StatusConflict, map[string]string{"error": "Phone number already exist"})
+			}
+		}
+		log.Error(err)
+		return ctx.JSON(http.StatusInternalServerError, "Error when registering user")
+	}
+
+	return ctx.JSON(http.StatusOK, map[string]string{"message": "User updated"})
 }

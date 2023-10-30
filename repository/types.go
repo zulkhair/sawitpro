@@ -10,13 +10,34 @@ type GetTestByIdOutput struct {
 }
 
 type RegistrationInput struct {
-	ID          string
-	PhoneNumber string
-	FullName    string
-	Password    string
-	Salt        string
+	ID       string
+	Phone    string
+	Name     string
+	Password string
+	Salt     string
 }
 
 type RegistrationOutput struct {
 	ID string
+}
+
+type User struct {
+	ID       string
+	Phone    string
+	Name     string
+	Password string
+	Salt     string
+}
+
+type UpdateUser struct {
+	ID    string
+	Phone string
+	Name  string
+}
+
+type Param struct {
+	Logic    string
+	Field    string
+	Operator string
+	Value    interface{}
 }

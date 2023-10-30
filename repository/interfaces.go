@@ -9,4 +9,7 @@ import "context"
 type RepositoryInterface interface {
 	GetTestById(ctx context.Context, input GetTestByIdInput) (output GetTestByIdOutput, err error)
 	Registration(ctx context.Context, input RegistrationInput) (output RegistrationOutput, err error)
+	FindUser(ctx context.Context, params ...Param) (user User, err error)
+	IncreaseLoginAttempt(ctx context.Context, phone string) (err error)
+	UpdateUser(ctx context.Context, user UpdateUser) (err error)
 }
